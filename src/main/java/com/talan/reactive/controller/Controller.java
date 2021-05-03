@@ -29,6 +29,10 @@ public class Controller {
         this.consumer = consumer;
     }
 
+    private static String mergeIntAndStrings(Object a, Object b) {
+        return "Data:" + a + ", " + b;
+    }
+
     /**
      * Elements are matched one to one and processed as a whole
      * Mongo >---|
@@ -90,13 +94,9 @@ public class Controller {
                 .subscribe(consumer.get());
     }
 
-    private static String mergeIntAndStrings(Object a, Object b) {
-        return "Data:" + a + ", " + b;
-    }
-
     /**
      * Elements are parallelized before the map
-     * Mongo >----|
+     * * Mongo >----|
      * |
      * v
      * Kafa >--1-0..1--P--> map >---> output
