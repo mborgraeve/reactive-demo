@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 
 @Log4j2
 @Service
-public class LoggerConsumer {
+public class LoggerSubscriber {
 
     public Consumer<Object> get() {
         return t -> log.error("Output data: " + t);

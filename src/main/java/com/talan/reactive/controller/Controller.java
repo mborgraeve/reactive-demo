@@ -1,6 +1,6 @@
 package com.talan.reactive.controller;
 
-import com.talan.reactive.consumer.LoggerConsumer;
+import com.talan.reactive.consumer.LoggerSubscriber;
 import com.talan.reactive.producer.KafkaProducer;
 import com.talan.reactive.producer.MongoProducer;
 import lombok.extern.log4j.Log4j2;
@@ -20,27 +20,27 @@ public class Controller {
 
     private final KafkaProducer kafka;
     private final MongoProducer mongo;
-    private final LoggerConsumer consumer;
+    private final LoggerSubscriber subscriber;
     private final Random random = new Random();
 
-    public Controller(KafkaProducer producer, MongoProducer mongo, LoggerConsumer consumer) {
+    public Controller(KafkaProducer producer, MongoProducer mongo, LoggerSubscriber subscriber) {
         this.kafka = producer;
         this.mongo = mongo;
-        this.consumer = consumer;
+        this.subscriber = subscriber;
     }
 
     private static String mergeIntAndStrings(Object a, Object b) {
         return "Data:" + a + ", " + b;
     }
 
-    /**
-     * Elements are matched one to one and processed as a whole
-     * Mongo >---|
-     * |
-     * v
-     * Kafa >---1-1----> map >---> output
+    /*
+     Elements are matched one to one and processed as a whole
+     Mongo >---|
+               |
+               v
+     Kafa >---1-1----> map >---> output
      */
-    //    @PostConstruct
+//    @PostConstruct
     public void planAndSubscribeZip() {
         Flux.zip(kafka.get(), mongo.getStrings())
                 .delayElements(Duration.ofSeconds(1))
@@ -50,17 +50,17 @@ public class Controller {
                     return t;
                 })
                 .log()
-                .subscribe(consumer.get());
+                .subscribe(subscriber.get());
     }
 
-    /**
-     * Elements from Kafka are mapped, then matched against Mongo data. We need mapped data to do the Mongo call. Mapping occurs before thus can occur even if no elements from mongo are emitted
-     * Mongo >-------------|
-     * |
-     * v
-     * Kafa >---> map >---1-1-------> output
+    /*
+      Elements from Kafka are mapped, then matched against Mongo data. We need mapped data to do the Mongo call. Mapping occurs before thus can occur even if no elements from mongo are emitted
+      Mongo >-------------|
+                          |
+                          v
+      Kafa >---> map >---1-1-------> output
      */
-    //    @PostConstruct
+//    @PostConstruct
     public void planAndSubscribeZipWith() {
         kafka.get()
                 .delayElements(Duration.ofSeconds(1))
@@ -71,18 +71,18 @@ public class Controller {
                 })
                 .flatMap(mongo::get)
                 .log()
-                .subscribe(consumer.get());
+                .subscribe(subscriber.get());
     }
 
-    /**
-     * Elements are matched, but not exactly one to one. Elements from Mongo can come faster, they are discarded, and kafak elements are matched with the last element from Mongo
-     * <p>
-     * Mongo >----|
-     * |
-     * v
-     * Kafa >--1-0..1----> map >---> output
+    /*
+      Elements are matched, but not exactly one to one. Elements from Mongo can come faster, they are discarded, and kafak elements are matched with the last element from Mongo
+      <p>
+      Mongo >----|
+                 |
+                 v
+      Kafa >--1-0..1----> map >---> output
      */
-    //    @PostConstruct
+//    @PostConstruct
     public void planAndSubscribeWithLatest() {
         kafka.get().withLatestFrom(mongo.getStrings(), Controller::mergeIntAndStrings)
                 .map(t -> {
@@ -91,30 +91,28 @@ public class Controller {
                     return t;
                 })
                 .log()
-                .subscribe(consumer.get());
+                .subscribe(subscriber.get());
     }
 
-    /**
-     * Elements are parallelized before the map
-     * * Mongo >----|
-     * |
-     * v
-     * Kafa >--1-0..1--P--> map >---> output
-     * |--> map >---> output
-     * ...
+    /*
+      Elements are parallelized before the map
+      * Mongo >----|
+                   |
+                   v
+      Kafa >--1-0..1--P--> map >---> output
+                      |--> map >---> output
+                      ...
      */
 
     @PostConstruct
     public void planAndSubscribeParallelElastic() {
-        kafka.get().withLatestFrom(mongo.getStrings(), Controller::mergeIntAndStrings)
+        Flux.zip(kafka.get(), mongo.getStrings())
                 .parallel(8)
                 .runOn(Schedulers.boundedElastic())
                 .map(t -> {
-                    log.warn("In Map: {}", t);
                     safeSleep(7500 + random.nextInt(7000));
                     return t;
                 })
-                .log()
-                .subscribe(consumer.get());
+                .subscribe(subscriber.get());
     }
 }
