@@ -96,9 +96,9 @@ public class Controller {
 
     /*
       Elements are parallelized before the map
-      * Mongo >----|
-                   |
-                   v
+      * Mongo >---|
+                  |
+                  v
       Kafa >--1-0..1--P--> map >---> output
                       |--> map >---> output
                       ...
