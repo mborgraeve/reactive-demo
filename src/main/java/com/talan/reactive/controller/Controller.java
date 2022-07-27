@@ -35,10 +35,12 @@ public class Controller {
 
     /*
      Elements are matched one to one and processed as a whole
+
      Mongo >---|
                |
                v
      Kafa >---1-1----> map >---> output
+
      */
 //    @PostConstruct
     public void planAndSubscribeZip() {
@@ -51,14 +53,17 @@ public class Controller {
                 })
                 .log()
                 .subscribe(subscriber.get());
+        log.info("Flux definition finished.");
     }
 
     /*
       Elements from Kafka are mapped, then matched against Mongo data. We need mapped data to do the Mongo call. Mapping occurs before thus can occur even if no elements from mongo are emitted
+
       Mongo >-------------|
                           |
                           v
       Kafa >---> map >---1-1-------> output
+
      */
 //    @PostConstruct
     public void planAndSubscribeZipWith() {
@@ -66,7 +71,7 @@ public class Controller {
                 .delayElements(Duration.ofSeconds(1))
                 .map(t -> {
                     log.warn(t);
-                    safeSleep(2000);
+                    safeSleep(200);
                     return t;
                 })
                 .flatMap(mongo::get)
@@ -76,11 +81,12 @@ public class Controller {
 
     /*
       Elements are matched, but not exactly one to one. Elements from Mongo can come faster, they are discarded, and kafak elements are matched with the last element from Mongo
-      <p>
+
       Mongo >----|
                  |
                  v
-      Kafa >--1-0..1----> map >---> output
+      Kafka >--1-0..1----> map >---> output
+
      */
 //    @PostConstruct
     public void planAndSubscribeWithLatest() {
@@ -96,9 +102,10 @@ public class Controller {
 
     /*
       Elements are parallelized before the map
-      * Mongo >---|
-                  |
-                  v
+
+      Mongo >----|
+                 |
+                 v
       Kafa >--1-0..1--P--> map >---> output
                       |--> map >---> output
                       ...
