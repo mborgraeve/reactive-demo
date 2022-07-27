@@ -111,7 +111,7 @@ public class Controller {
                       ...
      */
 
-    @PostConstruct
+//    @PostConstruct
     public void planAndSubscribeParallelElastic() {
         Flux.zip(kafka.get(), mongo.getStrings())
                 .parallel(8)
